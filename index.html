@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учет и Продажи — Тёмная система</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border: 1px solid #2d2d2d;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .nav-pills .nav-link {
+            color: #a0a0a0;
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 10px 18px;
+            margin-right: 8px;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .table {
+            color: #e0e0e0;
+            margin-bottom: 0;
+        }
+        .table-dark {
+            --bs-table-bg: #1e1e1e;
+            --bs-table-border-color: #2d2d2d;
+        }
+        .form-control, .form-select {
+            background-color: #2b2b2b;
+            border: 1px solid #3d3d3d;
+            color: #ffffff;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #333333;
+            color: #ffffff;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        .shift-status-bar {
+            background: #1a2332;
+            border-left: 4px solid #0d6efd;
+            border-radius: 8px;
+        }
+        .stat-card {
+            background-color: #252525;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        .diff-negative { color: #ff6b6b; font-weight: bold; }
+        .diff-positive { color: #51cf66; font-weight: bold; }
+        .diff-zero { color: #868e96; }
+    </style>
+</head>
+<body>
+
+<div class="container my-4">
+    <!-- Шапка системы -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-secondary">
+        <h3 class="fw-bold m-0"><i class="bi bi-box-seam text-primary me-2"></i> Учет & Касса</h3>
+        
+        <!-- Кнопка смены -->
+        <div id="shift-control-btn-container">
+            <!-- Динамически заполняется -->
+        </div>
+    </div>
+
+    <!-- Информационная панель смены -->
+    <div id="shift-info-bar" class="shift-status-bar p-3 mb-4 d-flex justify-content-between align-items-center d-none">
+        <div>
+            <span class="badge bg-success me-2">Смена открыта</span>
+            <span class="fw-bold me-3" id="shift-user-display"><i class="bi bi-person me-1"></i> -</span>
+            <span class="text-muted"><i class="bi bi-clock me-1"></i> Время работы: <span id="shift-time-display">-</span></span>
+        </div>
+        <div>
+            <span class="me-3">Продано за смену: <strong id="shift-total-sales" class="text-primary">0 ₽</strong></span>
+            <span>Товаров: <strong id="shift-total-qty" class="text-primary">0 шт.</strong></span>
+        </div>
+    </div>
+
+    <!-- Главное меню -->
+    <ul class="nav nav-pills mb-4" id="main-tabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-pos-btn" data-bs-toggle="pill" data-bs-target="#tab-pos" type="button">
+                <i class="bi bi-cart-check me-2"></i>Страница 1: Продажа (Касса)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-stock-btn" data-bs-toggle="pill" data-bs-target="#tab-stock" type="button">
+                <i class="bi bi-boxes me-2"></i>Остатки на складе
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-manage-btn" data-bs-toggle="pill" data-bs-target="#tab-manage" type="button">
+                <i class="bi bi-pencil-square me-2"></i>Страница 2: Редактировать товары и остатки
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="tabContent">
+        
+        <!-- СТРАНИЦА 1: Касса / Продажи -->
+        <div class="tab-pane fade show active" id="tab-pos">
+            <div class="row">
+                <!-- Оформление продажи -->
+                <div class="col-lg-7 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header border-secondary fw-bold">
+                            <i class="bi bi-upc-scan me-2"></i>Оформление продажи
+                        </div>
+                        <div class="card-body">
+                            <div id="shift-closed-alert" class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Смена закрыта. Откройте смену в правом верхнем углу, чтобы совершать продажи.
+                            </div>
+                            
+                            <form id="sell-form" class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted">Выберите товар</label>
+                                    <select id="sell-product-select" class="form-select" required>
+                                        <option value="">-- Выберите из списка --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label text-muted">Количество</label>
+                                    <input type="number" id="sell-qty" class="form-control" value="1" min="1" required>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="submit" id="sell-submit-btn" class="btn btn-primary w-100" disabled>
+                                        <i class="bi bi-cash-stack me-1"></i> Продать
+                                    </button>
+                                </div>
+                            </form>
+
+                            <hr class="border-secondary my-4">
+
+                            <div class="row text-center">
+                                <div class="col-md-6 mb-2">
+                                    <div class="stat-card">
+                                        <div class="text-muted mb-1">Выручка за смену</div>
+                                        <div class="stat-value" id="card-shift-money">0 ₽</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="stat-card">
+                                        <div class="text-muted mb-1">Продано единиц</div>
+                                        <div class="stat-value" id="card-shift-count">0 шт.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Журнал продаж за смену -->
+                <div class="col-lg-5 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header border-secondary fw-bold">
+                            <i class="bi bi-receipt me-2"></i>Продажи за текущую смену
+                        </div>
+                        <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Товар</th>
+                                        <th>Кол-во</th>
+                                        <th>Сумма</th>
+                                        <th>Время</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sales-log-body">
+                                    <!-- Продажи -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка: Просмотр остатков на складе -->
+        <div class="tab-pane fade" id="tab-stock">
+            <div class="card">
+                <div class="card-header border-secondary fw-bold">
+                    <i class="bi bi-box-seam me-2"></i>Текущие остатки на складе
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-dark table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Артикул</th>
+                                <th>Наименование товара</th>
+                                <th>Цена</th>
+                                <th>Остаток на складе</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stock-view-table">
+                            <!-- Заполняется динамически -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА 2: Редактирование товаров и ревизия -->
+        <div class="tab-pane fade" id="tab-manage">
+            <div class="row">
+                <!-- Форма добавления/редактирования -->
+                <div class="col-md-4 mb-4">
+                    <div class="card">
+                        <div class="card-header border-secondary fw-bold" id="form-card-title">
+                            <i class="bi bi-plus-circle me-2"></i>Добавить товар
+                        </div>
+                        <div class="card-body">
+                            <form id="product-edit-form">
+                                <input type="hidden" id="edit-product-id">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Артикул / Штрихкод</label>
+                                    <input type="text" id="edit-code" class="form-control" required placeholder="Например: 1001">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Наименование</label>
+                                    <input type="text" id="edit-name" class="form-control" required placeholder="Например: Кофе 1кг">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Цена (₽)</label>
+                                    <input type="number" id="edit-price" class="form-control" min="0" step="0.01" required placeholder="0.00">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Количество на складе</label>
+                                    <input type="number" id="edit-qty" class="form-control" min="0" required placeholder="0">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary flex-grow-1" id="save-product-btn">Сохранить</button>
+                                    <button type="button" class="btn btn-outline-secondary d-none" id="cancel-edit-btn">Отмена</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Список товаров с управлением -->
+                <div class="col-md-8 mb-4">
+                    <div class="card">
+                        <div class="card-header border-secondary fw-bold">
+                            <i class="bi bi-gear me-2"></i>Управление каталогом товаров
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-dark table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Артикул</th>
+                                        <th>Наименование</th>
+                                        <th>Цена</th>
+                                        <th>Остаток</th>
+                                        <th class="text-end">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manage-products-table">
+                                    <!-- Товары -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Модальное окно открытия смены -->
+<div class="modal fade" id="openShiftModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="bi bi-door-open me-2"></i>Открытие смены</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="open-shift-form">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Имя сотрудника</label>
+                        <input type="text" id="shift-user-name" class="form-control" placeholder="Иван Иванов" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Время начала</label>
+                            <input type="time" id="shift-start-time" class="form-control" required>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Время окончания</label>
+                            <input type="time" id="shift-end-time" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Открыть смену</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Инициализация базовых данных
+    let products = JSON.parse(localStorage.getItem('app_products')) || [
+        { id: 1, code: '1001', name: 'Кофе Зерновой 1кг', price: 1200, qty: 15 },
+        { id: 2, code: '1002', name: 'Чай Черный 100г', price: 250, qty: 30 },
+        { id: 3, code: '1003', name: 'Сахар 1кг', price: 80, qty: 50 }
+    ];
+
+    let currentShift = JSON.parse(localStorage.getItem('app_shift')) || null;
+    let salesLog = JSON.parse(localStorage.getItem('app_sales')) || [];
+
+    // Сохранение в LocalStorage
+    function saveData() {
+        localStorage.setItem('app_products', JSON.stringify(products));
+        localStorage.setItem('app_shift', JSON.stringify(currentShift));
+        localStorage.setItem('app_sales', JSON.stringify(salesLog));
+    }
+
+    // --- УПРАВЛЕНИЕ СМЕНОЙ ---
+    function updateShiftUI() {
+        const btnContainer = document.getElementById('shift-control-btn-container');
+        const infoBar = document.getElementById('shift-info-bar');
+        const closedAlert = document.getElementById('shift-closed-alert');
+        const sellBtn = document.getElementById('sell-submit-btn');
+
+        if (currentShift && currentShift.isOpen) {
+            btnContainer.innerHTML = `
+                <button class="btn btn-outline-danger btn-sm" onclick="closeShift()">
+                    <i class="bi bi-door-closed me-1"></i>Закрыть смену
+                </button>
+            `;
+            infoBar.classList.remove('d-none');
+            closedAlert.classList.add('d-none');
+            sellBtn.disabled = false;
+
+            document.getElementById('shift-user-display').innerText = currentShift.userName;
+            document.getElementById('shift-time-display').innerText = `${currentShift.startTime} - ${currentShift.endTime}`;
+            
+            // Расчет итогов смены
+            const shiftSales = salesLog.filter(s => s.shiftId === currentShift.id);
+            const totalMoney = shiftSales.reduce((acc, s) => acc + s.total, 0);
+            const totalQty = shiftSales.reduce((acc, s) => acc + s.qty, 0);
+
+            document.getElementById('shift-total-sales').innerText = `${totalMoney.toLocaleString()} ₽`;
+            document.getElementById('shift-total-qty').innerText = `${totalQty} шт.`;
+            document.getElementById('card-shift-money').innerText = `${totalMoney.toLocaleString()} ₽`;
+            document.getElementById('card-shift-count').innerText = `${totalQty} шт.`;
+        } else {
+            btnContainer.innerHTML = `
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#openShiftModal">
+                    <i class="bi bi-door-open me-1"></i>Открыть смену
+                </button>
+            `;
+            infoBar.classList.add('d-none');
+            closedAlert.classList.remove('d-none');
+            sellBtn.disabled = true;
+
+            document.getElementById('card-shift-money').innerText = `0 ₽`;
+            document.getElementById('card-shift-count').innerText = `0 шт.`;
+        }
+    }
+
+    // Открытие смены через форму
+    document.getElementById('open-shift-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const userName = document.getElementById('shift-user-name').value.trim();
+        const startTime = document.getElementById('shift-start-time').value;
+        const endTime = document.getElementById('shift-end-time').value;
+
+        currentShift = {
+            id: Date.now(),
+            userName,
+            startTime,
+            endTime,
+            isOpen: true
+        };
+
+        saveData();
+        updateShiftUI();
+
+        const modalEl = document.getElementById('openShiftModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+        e.target.reset();
+    });
+
+    // Закрытие смены
+    function closeShift() {
+        if (confirm(`Завершить смену сотрудника ${currentShift.userName}?`)) {
+            currentShift.isOpen = false;
+            saveData();
+            updateShiftUI();
+            renderSalesLog();
+        }
+    }
+
+    // --- ПРОДАЖА ТОВАРОВ (СТРАНИЦА 1) ---
+    function populateSellSelect() {
+        const select = document.getElementById('sell-product-select');
+        select.innerHTML = '<option value="">-- Выберите из списка --</option>';
+        
+        products.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.id;
+            option.innerText = `${p.name} (${p.price} ₽) — в наличии: ${p.qty} шт.`;
+            if (p.qty <= 0) option.disabled = true;
+            select.appendChild(option);
+        });
+    }
+
+    document.getElementById('sell-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!currentShift || !currentShift.isOpen) return;
+
+        const prodId = parseInt(document.getElementById('sell-product-select').value);
+        const qty = parseInt(document.getElementById('sell-qty').value);
+
+        const product = products.find(p => p.id === prodId);
+
+        if (!product) {
+            alert('Выберите товар!');
+            return;
+        }
+
+        if (product.qty < qty) {
+            alert(`Недостаточно товара на складе! Доступно: ${product.qty} шт.`);
+            return;
+        }
+
+        // Списание
+        product.qty -= qty;
+
+        // Лог продаж
+        const sale = {
+            id: Date.now(),
+            shiftId: currentShift.id,
+            productName: product.name,
+            qty: qty,
+            price: product.price,
+            total: product.price * qty,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        salesLog.unshift(sale);
+
+        saveData();
+        renderAllTables();
+        updateShiftUI();
+        
+        e.target.reset();
+    });
+
+    function renderSalesLog() {
+        const tbody = document.getElementById('sales-log-body');
+        tbody.innerHTML = '';
+
+        const currentShiftSales = currentShift 
+            ? salesLog.filter(s => s.shiftId === currentShift.id)
+            : [];
+
+        if (currentShiftSales.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted p-3">Продаж в этой смене пока нет</td></tr>`;
+            return;
+        }
+
+        currentShiftSales.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${s.productName}</td>
+                <td>${s.qty} шт.</td>
+                <td class="text-success fw-bold">${s.total.toLocaleString()} ₽</td>
+                <td class="text-muted">${s.time}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- ОСТАТКИ И РЕДАКТИРОВАНИЕ (СТРАНИЦЫ 2 И 3) ---
+    function renderAllTables() {
+        populateSellSelect();
+        renderStockViewTable();
+        renderManageProductsTable();
+        renderSalesLog();
+    }
+
+    // Просмотр остатков
+    function renderStockViewTable() {
+        const tbody = document.getElementById('stock-view-table');
+        tbody.innerHTML = '';
+
+        products.forEach(p => {
+            let statusBadge = p.qty > 5 
+                ? `<span class="badge bg-success">В наличии</span>`
+                : p.qty > 0 
+                    ? `<span class="badge bg-warning text-dark">Мало</span>`
+                    : `<span class="badge bg-danger">Закончился</span>`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><code>${p.code}</code></td>
+                <td><strong>${p.name}</strong></td>
+                <td>${p.price.toLocaleString()} ₽</td>
+                <td class="fw-bold">${p.qty} шт.</td>
+                <td>${statusBadge}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Редактирование / Добавление
+    function renderManageProductsTable() {
+        const tbody = document.getElementById('manage-products-table');
+        tbody.innerHTML = '';
+
+        products.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><code>${p.code}</code></td>
+                <td>${p.name}</td>
+                <td>${p.price} ₽</td>
+                <td><strong>${p.qty}</strong> шт.</td>
+                <td class="text-end">
+                    <button class="btn btn-outline-info btn-sm me-1" onclick="editProduct(${p.id})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteProduct(${p.id})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Сохранение при создании/редактировании
+    document.getElementById('product-edit-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const editId = document.getElementById('edit-product-id').value;
+        const code = document.getElementById('edit-code').value.trim();
+        const name = document.getElementById('edit-name').value.trim();
+        const price = parseFloat(document.getElementById('edit-price').value);
+        const qty = parseInt(document.getElementById('edit-qty').value);
+
+        if (editId) {
+            // Редактирование
+            const prod = products.find(p => p.id === parseInt(editId));
+            if (prod) {
+                prod.code = code;
+                prod.name = name;
+                prod.price = price;
+                prod.qty = qty;
+            }
+        } else {
+            // Новое создание
+            const newProd = {
+                id: Date.now(),
+                code,
+                name,
+                price,
+                qty
+            };
+            products.push(newProd);
+        }
+
+        saveData();
+        resetEditForm();
+        renderAllTables();
+    });
+
+    function editProduct(id) {
+        const prod = products.find(p => p.id === id);
+        if (!prod) return;
+
+        document.getElementById('edit-product-id').value = prod.id;
+        document.getElementById('edit-code').value = prod.code;
+        document.getElementById('edit-name').value = prod.name;
+        document.getElementById('edit-price').value = prod.price;
+        document.getElementById('edit-qty').value = prod.qty;
+
+        document.getElementById('form-card-title').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Редактировать товар`;
+        document.getElementById('save-product-btn').innerText = 'Обновить данные';
+        document.getElementById('cancel-edit-btn').classList.remove('d-none');
+    }
+
+    function resetEditForm() {
+        document.getElementById('product-edit-form').reset();
+        document.getElementById('edit-product-id').value = '';
+        document.getElementById('form-card-title').innerHTML = `<i class="bi bi-plus-circle me-2"></i>Добавить товар`;
+        document.getElementById('save-product-btn').innerText = 'Сохранить';
+        document.getElementById('cancel-edit-btn').classList.add('d-none');
+    }
+
+    document.getElementById('cancel-edit-btn').addEventListener('click', resetEditForm);
+
+    function deleteProduct(id) {
+        if (confirm('Вы действительно хотите удалить этот товар из базы?')) {
+            products = products.filter(p => p.id !== id);
+            saveData();
+            renderAllTables();
+        }
+    }
+
+    // Автоматическая установка текущего времени при открытии модалки
+    document.getElementById('openShiftModal').addEventListener('show.bs.modal', () => {
+        const now = new Date();
+        const timeString = now.toTimeString().substring(0, 5);
+        document.getElementById('shift-start-time').value = timeString;
+    });
+
+    // Инициализация при старте
+    updateShiftUI();
+    renderAllTables();
+</script>
+</body>
+</html>
