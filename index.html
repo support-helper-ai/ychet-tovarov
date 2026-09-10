@@ -1,36 +1,1372 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <title>Учет & Касса</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учет и Касса — Firebase Cloud</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --glass: rgba(22, 28, 42, 0.48);
+            --glass-strong: rgba(16, 20, 32, 0.62);
+            --glass-line: rgba(255, 255, 255, 0.12);
+            --glass-line-soft: rgba(255, 255, 255, 0.07);
+        }
+        body {
+            background:
+                radial-gradient(1200px 600px at 8% -10%, rgba(56, 189, 248, 0.18), transparent 55%),
+                radial-gradient(900px 500px at 100% 0%, rgba(129, 140, 248, 0.22), transparent 50%),
+                radial-gradient(800px 500px at 80% 110%, rgba(14, 165, 233, 0.12), transparent 45%),
+                #0b1018;
+            background-attachment: fixed;
+            color: #e8eef8;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container { position: relative; z-index: 1; }
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(22px) saturate(160%);
+            -webkit-backdrop-filter: blur(22px) saturate(160%);
+            border: 1px solid var(--glass-line);
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .card-header, .card-footer {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--glass-line-soft) !important;
+        }
+        .nav-pills .nav-link {
+            color: #b7c3d6;
+            border-radius: 12px;
+            font-weight: 500;
+            padding: 10px 18px;
+            margin-right: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid transparent;
+            backdrop-filter: blur(10px);
+        }
+        .nav-pills .nav-link:hover { color: #fff; border-color: var(--glass-line); }
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, rgba(13,110,253,0.92), rgba(102,16,242,0.85));
+            color: #fff;
+            border-color: rgba(147, 197, 253, 0.35);
+        }
+        .table { color: #e8eef8; margin-bottom: 0; }
+        .table-dark {
+            --bs-table-bg: transparent;
+            --bs-table-border-color: rgba(255,255,255,0.08);
+            --bs-table-hover-bg: rgba(255,255,255,0.05);
+            --bs-table-striped-bg: rgba(255,255,255,0.035);
+            --bs-table-color: #e8eef8;
+        }
+        .form-control, .form-select {
+            background: rgba(8, 12, 22, 0.45);
+            border: 1px solid var(--glass-line);
+            color: #ffffff;
+            backdrop-filter: blur(8px);
+        }
+        .form-control:focus, .form-select:focus {
+            background: rgba(12, 18, 32, 0.7);
+            color: #ffffff;
+            border-color: rgba(96, 165, 250, 0.7);
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.22);
+        }
+        .shift-status-bar {
+            background: rgba(26, 48, 78, 0.45);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(96, 165, 250, 0.25);
+            border-left: 4px solid #60a5fa;
+            border-radius: 14px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-line-soft);
+            border-radius: 14px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #7dd3fc; }
+        .alert { backdrop-filter: blur(10px); }
+        .modal-content {
+            background: rgba(16, 22, 36, 0.72) !important;
+            backdrop-filter: blur(22px);
+            border: 1px solid var(--glass-line) !important;
+        }
+        footer { margin-top: auto; background: transparent; border-color: var(--glass-line-soft) !important; }
+
+        .sales-shift-total {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px 16px;
+            padding: 12px 16px;
+            background: linear-gradient(180deg, rgba(96,165,250,0.12), rgba(255,255,255,0.03));
+            border-top: 1px solid rgba(125, 211, 252, 0.25);
+        }
+        .sales-shift-total .sales-total-label {
+            font-weight: 600;
+            color: #c7d7ee;
+            font-size: 0.92rem;
+        }
+        .sales-total-metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            font-size: 0.88rem;
+            color: #9fb0c9;
+        }
+        .sales-total-metrics .sum {
+            color: #7dd3fc;
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        /* Стили для Helper AI */
+        #ai-widget-toggle {
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            color: #fff;
+            border: none;
+            box-shadow: 0 8px 24px rgba(13, 110, 253, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            cursor: pointer;
+            z-index: 1050;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #ai-widget-toggle:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 0 12px 30px rgba(13, 110, 253, 0.6);
+        }
+        #ai-widget-toggle .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid #0d6efd;
+            animation: ai-pulse 2s infinite;
+        }
+        @keyframes ai-pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        #ai-panel {
+            position: fixed;
+            bottom: 95px;
+            right: 25px;
+            width: 390px;
+            max-width: calc(100vw - 40px);
+            height: 540px;
+            max-height: calc(100vh - 120px);
+            background: rgba(14, 18, 28, 0.55);
+            backdrop-filter: blur(28px) saturate(170%);
+            -webkit-backdrop-filter: blur(28px) saturate(170%);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 20px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(96,165,250,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
+            display: flex;
+            flex-direction: column;
+            z-index: 1049;
+            overflow: hidden;
+            transform-origin: bottom right;
+            transform: scale(0) translateY(40px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        #ai-panel.open {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .ai-header {
+            background: linear-gradient(135deg, rgba(40, 60, 110, 0.35), rgba(20, 24, 40, 0.25));
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .ai-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ai-body {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(8, 10, 18, 0.22);
+        }
+        .ai-msg {
+            max-width: 88%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            word-break: break-word;
+            animation: msg-appear 0.25s ease-out forwards;
+        }
+        @keyframes msg-appear {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .ai-msg-bot {
+            background: rgba(255, 255, 255, 0.08);
+            color: #e8eef8;
+            border-bottom-left-radius: 2px;
+            align-self: flex-start;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        .ai-msg-user {
+            background: linear-gradient(135deg, rgba(13,110,253,0.88), rgba(99,102,241,0.82));
+            color: #ffffff;
+            border-bottom-right-radius: 2px;
+            align-self: flex-end;
+            border: 1px solid rgba(147,197,253,0.25);
+        }
+        .ai-footer {
+            padding: 12px;
+            background: rgba(255,255,255,0.04);
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .ai-quick-btn {
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+            color: #c5d4ea;
+            border: 1px solid rgba(255,255,255,0.12);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ai-quick-btn:hover {
+            background: #0d6efd;
+            color: #fff;
+            border-color: #0d6efd;
+        }
+    </style>
 </head>
 <body>
 
-    <!-- Пример интерфейса Helper AI -->
-    <div class="chat-container">
-        <div class="chat-header">✨ Helper AI</div>
-        
-        <div class="chat-body" id="chatBody">
-            <div class="message bot">
-                👋 Привет, босс! Я Helper AI.<br>Попробуй спросить:
-                <div class="quick-actions">
-                    <!-- Быстрая кнопка отправляет ровно строку "Добавить товар" -->
-                    <button onclick="sendQuickPrompt(HelperAI.prompts.ADD_PRODUCT)">+ Добавить товар</button>
-                    <button onclick="sendQuickPrompt(HelperAI.prompts.COUNT_SHIFT)">📊 Считать смену</button>
+<div class="container my-4">
+    <!-- Шапка системы -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-secondary">
+        <h3 class="fw-bold m-0"><i class="bi bi-cloud-check text-primary me-2"></i> Учет & Касса</h3>
+        <div id="shift-control-btn-container"></div>
+    </div>
+
+    <!-- Статус смены -->
+    <div id="shift-info-bar" class="shift-status-bar p-3 mb-4 d-flex justify-content-between align-items-center d-none">
+        <div>
+            <span class="badge bg-success me-2">Смена открыта</span>
+            <span class="fw-bold me-3" id="shift-user-display"><i class="bi bi-person me-1"></i> -</span>
+            <span class="text-muted"><i class="bi bi-clock me-1"></i> Время: <span id="shift-time-display">-</span></span>
+        </div>
+        <div>
+            <span class="me-3">Выручка: <strong id="shift-total-sales" class="text-primary">0 ₽</strong></span>
+            <span>Товаров: <strong id="shift-total-qty" class="text-primary">0 шт.</strong></span>
+        </div>
+    </div>
+
+    <!-- Навигация -->
+    <ul class="nav nav-pills mb-4" id="main-tabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-pos-btn" data-bs-toggle="pill" data-bs-target="#tab-pos" type="button">
+                <i class="bi bi-cart-check me-2"></i>Продажи (Касса)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-stock-btn" data-bs-toggle="pill" data-bs-target="#tab-stock" type="button">
+                <i class="bi bi-boxes me-2"></i>Остатки
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-manage-btn" data-bs-toggle="pill" data-bs-target="#tab-manage" type="button">
+                <i class="bi bi-pencil-square me-2"></i>Редактировать каталог
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link text-warning fw-bold" id="tab-calc-btn" data-bs-toggle="pill" data-bs-target="#tab-calc" type="button">
+                <i class="bi bi-calculator me-2"></i>Считаться (Конец смены)
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="tabContent">
+        <!-- Вкладка 1: Касса / Продажи -->
+        <div class="tab-pane fade show active" id="tab-pos">
+            <div class="row">
+                <div class="col-lg-7 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header border-secondary fw-bold">
+                            <i class="bi bi-upc-scan me-2"></i>Оформление продажи
+                        </div>
+                        <div class="card-body">
+                            <div id="shift-closed-alert" class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Смена закрыта. Откройте смену в правом верхнем углу для работы.
+                            </div>
+                            
+                            <form id="sell-form" class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted">Выберите товар</label>
+                                    <select id="sell-product-select" class="form-select" required></select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label text-muted">Количество</label>
+                                    <input type="number" id="sell-qty" class="form-control" value="1" min="1" required>
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <button type="submit" id="sell-submit-btn" class="btn btn-primary w-100" disabled>
+                                        <i class="bi bi-cash-stack me-1"></i> Продать
+                                    </button>
+                                </div>
+                            </form>
+
+                            <hr class="border-secondary my-4">
+
+                            <div class="row text-center">
+                                <div class="col-md-6 mb-2">
+                                    <div class="stat-card">
+                                        <div class="text-muted mb-1">Выручка за смену</div>
+                                        <div class="stat-value" id="card-shift-money">0 ₽</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="stat-card">
+                                        <div class="text-muted mb-1">Продано единиц</div>
+                                        <div class="stat-value" id="card-shift-count">0 шт.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Журнал продаж за смену -->
+                <div class="col-lg-5 mb-4">
+                    <div class="card h-100 d-flex flex-column">
+                        <div class="card-header border-secondary fw-bold">
+                            <i class="bi bi-receipt me-2"></i>Продажи за текущую смену
+                        </div>
+                        <div class="card-body p-0 flex-grow-1" style="max-height: 340px; overflow-y: auto;">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Время</th></tr>
+                                </thead>
+                                <tbody id="sales-log-body"></tbody>
+                            </table>
+                        </div>
+                        <div class="sales-shift-total">
+                            <div class="sales-total-label"><i class="bi bi-cash-coin me-1"></i>Итого за смену</div>
+                            <div class="sales-total-metrics">
+                                <span>Позиций: <strong id="sales-log-total-lines">0</strong></span>
+                                <span>Кол-во: <strong id="sales-log-total-qty">0 шт.</strong></span>
+                                <span class="sum">Сумма: <span id="sales-log-total-money">0 ₽</span></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="chat-footer">
-            <input type="text" id="chatInput" placeholder="Напишите Helper AI...">
-            <button id="sendBtn">➤</button>
+        <!-- Вкладка 2: Остатки -->
+        <div class="tab-pane fade" id="tab-stock">
+            <div class="card">
+                <div class="card-header border-secondary fw-bold">
+                    <i class="bi bi-box-seam me-2"></i>Текущие остатки на складе
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-dark table-striped align-middle">
+                        <thead>
+                            <tr><th>Артикул</th><th>Наименование товара</th><th>Цена</th><th>Остаток</th><th>Статус</th></tr>
+                        </thead>
+                        <tbody id="stock-view-table"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка 3: Редактирование товаров -->
+        <div class="tab-pane fade" id="tab-manage">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="card">
+                        <div class="card-header border-secondary fw-bold" id="form-card-title">
+                            <i class="bi bi-plus-circle me-2"></i>Добавить товар
+                        </div>
+                        <div class="card-body">
+                            <form id="product-edit-form">
+                                <input type="hidden" id="edit-product-id">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Артикул / Штрихкод</label>
+                                    <input type="text" id="edit-code" class="form-control" required placeholder="1001">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Наименование</label>
+                                    <input type="text" id="edit-name" class="form-control" required placeholder="Товар 1">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Цена (₽)</label>
+                                    <input type="number" id="edit-price" class="form-control" min="0" step="0.01" required placeholder="0.00">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Количество на складе</label>
+                                    <input type="number" id="edit-qty" class="form-control" min="0" required placeholder="0">
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary flex-grow-1" id="save-product-btn">Сохранить</button>
+                                    <button type="button" class="btn btn-outline-secondary d-none" id="cancel-edit-btn">Отмена</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-8 mb-4">
+                    <div class="card">
+                        <div class="card-header border-secondary fw-bold">
+                            <i class="bi bi-gear me-2"></i>Управление каталогом товаров
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-dark table-hover align-middle">
+                                <thead>
+                                    <tr><th>Артикул</th><th>Наименование</th><th>Цена</th><th>Остаток</th><th class="text-end">Действия</th></tr>
+                                </thead>
+                                <tbody id="manage-products-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладка 4: Считать смену (Конец смены) -->
+        <div class="tab-pane fade" id="tab-calc">
+            <div class="row">
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header border-secondary fw-bold text-warning">
+                            <i class="bi bi-calculator-fill me-2"></i>Автоматический калькулятор смены
+                        </div>
+                        <div class="card-body">
+                            <form id="shift-calc-form">
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Название клуба</label>
+                                    <input type="text" id="calc-club-name" class="form-control" placeholder="CyberClub Neo" value="CyberClub">
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label text-muted">Дата выхода</label>
+                                        <input type="date" id="calc-shift-date" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label text-muted">Администратор</label>
+                                        <input type="text" id="calc-admin-name" class="form-control" placeholder="Имя админа" required>
+                                    </div>
+                                </div>
+
+                                <div class="p-3 mb-3 bg-dark border border-secondary rounded">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span>Зарегистрированные продажи (по кассе):</span>
+                                        <strong id="calc-system-sales" class="text-primary">0 ₽</strong>
+                                    </div>
+                                    <small class="text-muted">Это сумма, рассчитанная системой на основе проведенных позиций за смену.</small>
+                                </div>
+
+                                <h6 class="text-muted mb-3 border-bottom border-secondary pb-2">Фактический пересчет денег (Из кассы):</h6>
+
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label text-muted">Наличка (₽)</label>
+                                        <input type="number" id="calc-cash" class="form-control" value="0" min="0" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label text-muted">Терминал (₽)</label>
+                                        <input type="number" id="calc-terminal" class="form-control" value="0" min="0" required>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label text-muted">Переводы (₽)</label>
+                                        <input type="number" id="calc-transfers" class="form-control" value="0" min="0" required>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Зарплата (взято из кассы) (₽)</label>
+                                    <input type="number" id="calc-salary" class="form-control" value="0" min="0" placeholder="Сколько забрали на ЗП">
+                                </div>
+
+                                <button type="button" class="btn btn-warning w-100 fw-bold" id="run-calc-btn">
+                                    <i class="bi bi-check-circle me-1"></i> Посчитать смену
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header border-secondary fw-bold text-success">
+                            <i class="bi bi-file-earmark-text me-2"></i>Итоговый отчёт по смене
+                        </div>
+                        <div class="card-body d-flex flex-direction-column">
+                            <textarea id="calc-report-output" class="form-control bg-dark text-light border-secondary font-monospace p-3 flex-grow-1" rows="14" readonly placeholder="Нажмите 'Посчитать смену', чтобы сформировать готовый отчет..."></textarea>
+                            <button class="btn btn-outline-success mt-3 w-100" id="copy-report-btn">
+                                <i class="bi bi-clipboard me-1"></i> Скопировать отчёт для отправки
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно открытия смены -->
+<div class="modal fade" id="openShiftModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="bi bi-door-open me-2"></i>Открытие смены</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="open-shift-form">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Имя сотрудника</label>
+                        <input type="text" id="shift-user-name" class="form-control" placeholder="Иван Иванов" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Время начала</label>
+                            <input type="time" id="shift-start-time" class="form-control" required>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Время окончания</label>
+                            <input type="time" id="shift-end-time" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Открыть смену</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Helper AI Widget -->
+<button id="ai-widget-toggle" title="Открыть Helper AI">
+    <div class="pulse-ring"></div>
+    <i class="bi bi-robot" id="ai-toggle-icon"></i>
+</button>
+
+<div id="ai-panel">
+    <div class="ai-header">
+        <div class="ai-title">
+            <i class="bi bi-stars fs-5 text-primary"></i>
+            <span>Helper AI</span>
+        </div>
+        <button class="btn-close btn-close-white btn-sm" id="ai-close-btn"></button>
+    </div>
+    
+    <div class="ai-body" id="ai-messages">
+        <div class="ai-msg ai-msg-bot">
+            👋 Привет! Я <strong>Helper AI</strong> — рядом на смене, без лишней суеты 🙂<br><br>
+            Спроси что угодно по кассе или просто напиши. Если помогу — буду рад услышать «спасибо» 💛<br>
+            <em>Могу, например:</em>
+            <div class="d-flex flex-wrap gap-1 mt-2">
+                <span class="ai-quick-btn" onclick="sendQuickAi('Добавить товар')">+ Добавить товар</span>
+                <span class="ai-quick-btn" onclick="sendQuickAi('Погода в Елабуге')">🌤️ Погода в Елабуге</span>
+                <span class="ai-quick-btn" onclick="sendQuickAi('Пошути')">😂 Пошутить</span>
+                <span class="ai-quick-btn" onclick="sendQuickAi('Посчитай смену')">🧮 Считать смену</span>
+            </div>
         </div>
     </div>
 
-    <!-- ПОДКЛЮЧЕНИЕ МОДУЛЕЙ ССРИПТОВ -->
-    <script src="js/store.js"></script>
-    <script src="js/helper-ai.js"></script>
-    <script src="js/app.js"></script>
+    <div class="ai-footer">
+        <form id="ai-form" class="d-flex gap-2">
+            <input type="text" id="ai-input" class="form-control form-control-sm" placeholder="Напишите Helper AI или задайте вопрос..." autocomplete="off">
+            <button type="submit" class="btn btn-primary btn-sm px-3"><i class="bi bi-send-fill"></i></button>
+        </form>
+    </div>
+</div>
+
+<footer class="text-center py-3 text-muted border-top border-secondary mt-auto" style="font-size: 0.8rem;">
+    По вопросам и поддержке обращаться: <a href="mailto:support@example.com" class="text-muted text-decoration-none border-bottom border-secondary">support@example.com</a> | Тел: +7 (999) 000-00-00
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyB-9fkBReut_BWDKKIsucLUYOE837h7h4o",
+        authDomain: "support-helper-ai.firebaseapp.com",
+        projectId: "support-helper-ai",
+        storageBucket: "support-helper-ai.firebasestorage.app",
+        messagingSenderId: "996071327093",
+        appId: "1:996071327093:web:85890114690de2c1e3ff3c"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let products = [];
+    let currentShift = null;
+    let salesLog = [];
+
+    // Слушатель товаров
+    onSnapshot(collection(db, "products"), (snapshot) => {
+        products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderAllTables();
+    });
+
+    // Слушатель смены
+    const shiftQuery = query(collection(db, "shifts"), where("isOpen", "==", true));
+    onSnapshot(shiftQuery, (snapshot) => {
+        if (!snapshot.empty) {
+            const shiftDoc = snapshot.docs[0];
+            currentShift = { id: shiftDoc.id, ...shiftDoc.data() };
+            loadShiftSales(currentShift.id);
+        } else {
+            currentShift = null;
+            salesLog = [];
+            updateShiftUI();
+            renderSalesLog();
+        }
+    });
+
+    function loadShiftSales(shiftId) {
+        const salesQuery = query(collection(db, "sales"), where("shiftId", "==", shiftId));
+        onSnapshot(salesQuery, (snapshot) => {
+            salesLog = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            salesLog.sort((a, b) => b.createdAt - a.createdAt);
+            updateShiftUI();
+            renderSalesLog();
+        });
+    }
+
+    // Продажа
+    document.getElementById('sell-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentShift) return;
+
+        const prodId = document.getElementById('sell-product-select').value;
+        const qty = parseInt(document.getElementById('sell-qty').value);
+        const product = products.find(p => p.id === prodId);
+
+        if (!product || product.qty < qty) {
+            alert('Недостаточно товара!');
+            return;
+        }
+
+        await updateDoc(doc(db, "products", prodId), { qty: product.qty - qty });
+        await addDoc(collection(db, "sales"), {
+            shiftId: currentShift.id,
+            productName: product.name,
+            qty: qty,
+            price: product.price,
+            total: product.price * qty,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            createdAt: Date.now()
+        });
+
+        e.target.reset();
+    });
+
+    // Открытие смены
+    document.getElementById('open-shift-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userName = document.getElementById('shift-user-name').value.trim();
+        const startTime = document.getElementById('shift-start-time').value;
+        const endTime = document.getElementById('shift-end-time').value;
+
+        await addDoc(collection(db, "shifts"), {
+            userName, startTime, endTime, isOpen: true, createdAt: Date.now()
+        });
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('openShiftModal'));
+        if (modal) modal.hide();
+        e.target.reset();
+    });
+
+    window.closeShift = async () => {
+        if (currentShift && confirm(`Закрыть смену сотрудника ${currentShift.userName}?`)) {
+            await updateDoc(doc(db, "shifts", currentShift.id), { isOpen: false });
+        }
+    };
+
+    // Форма редактирования товаров
+    document.getElementById('product-edit-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const editId = document.getElementById('edit-product-id').value;
+        const code = document.getElementById('edit-code').value.trim();
+        const name = document.getElementById('edit-name').value.trim();
+        const price = parseFloat(document.getElementById('edit-price').value);
+        const qty = parseInt(document.getElementById('edit-qty').value);
+
+        if (editId) {
+            await updateDoc(doc(db, "products", editId), { code, name, price, qty });
+        } else {
+            await addDoc(collection(db, "products"), { code, name, price, qty });
+        }
+
+        resetEditForm();
+    });
+
+    window.deleteProduct = async (id) => {
+        if (confirm('Удалить товар из базы данных?')) {
+            await deleteDoc(doc(db, "products", id));
+        }
+    };
+
+    function updateShiftUI() {
+        const btnContainer = document.getElementById('shift-control-btn-container');
+        const infoBar = document.getElementById('shift-info-bar');
+        const closedAlert = document.getElementById('shift-closed-alert');
+        const sellBtn = document.getElementById('sell-submit-btn');
+
+        const totalMoney = salesLog.reduce((acc, s) => acc + Number(s.total || 0), 0);
+        const totalQty = salesLog.reduce((acc, s) => acc + Number(s.qty || 0), 0);
+        document.getElementById('sales-log-total-money').innerText = `${totalMoney.toLocaleString('ru-RU')} ₽`;
+        document.getElementById('sales-log-total-qty').innerText = `${totalQty} шт.`;
+        document.getElementById('sales-log-total-lines').innerText = String(salesLog.length);
+
+        document.getElementById('calc-system-sales').innerText = `${totalMoney.toLocaleString()} ₽`;
+
+        if (currentShift) {
+            btnContainer.innerHTML = `<button class="btn btn-outline-danger btn-sm" onclick="closeShift()"><i class="bi bi-door-closed me-1"></i>Закрыть смену</button>`;
+            infoBar.classList.remove('d-none');
+            closedAlert.classList.add('d-none');
+            sellBtn.disabled = false;
+
+            document.getElementById('shift-user-display').innerText = currentShift.userName;
+            document.getElementById('shift-time-display').innerText = `${currentShift.startTime} - ${currentShift.endTime}`;
+            document.getElementById('shift-total-sales').innerText = `${totalMoney.toLocaleString()} ₽`;
+            document.getElementById('shift-total-qty').innerText = `${totalQty} шт.`;
+            document.getElementById('card-shift-money').innerText = `${totalMoney.toLocaleString()} ₽`;
+            document.getElementById('card-shift-count').innerText = `${totalQty} шт.`;
+
+            document.getElementById('calc-admin-name').value = currentShift.userName;
+        } else {
+            btnContainer.innerHTML = `<button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#openShiftModal"><i class="bi bi-door-open me-1"></i>Открыть смену</button>`;
+            infoBar.classList.add('d-none');
+            closedAlert.classList.remove('d-none');
+            sellBtn.disabled = true;
+            document.getElementById('card-shift-money').innerText = `0 ₽`;
+            document.getElementById('card-shift-count').innerText = `0 шт.`;
+            document.getElementById('sales-log-total-money').innerText = `0 ₽`;
+            document.getElementById('sales-log-total-qty').innerText = `0 шт.`;
+            document.getElementById('sales-log-total-lines').innerText = `0`;
+        }
+    }
+
+    function renderAllTables() {
+        const select = document.getElementById('sell-product-select');
+        select.innerHTML = '<option value="">-- Выберите товар --</option>';
+        products.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = `${p.name} (${p.price} ₽) — ${p.qty} шт.`;
+            if (p.qty <= 0) opt.disabled = true;
+            select.appendChild(opt);
+        });
+
+        const stockBody = document.getElementById('stock-view-table');
+        stockBody.innerHTML = '';
+        products.forEach(p => {
+            let badge = p.qty > 5 ? `<span class="badge bg-success">В наличии</span>` : p.qty > 0 ? `<span class="badge bg-warning text-dark">Мало</span>` : `<span class="badge bg-danger">Нет</span>`;
+            stockBody.innerHTML += `<tr><td><code>${p.code}</code></td><td><strong>${p.name}</strong></td><td>${p.price} ₽</td><td>${p.qty} шт.</td><td>${badge}</td></tr>`;
+        });
+
+        const manageBody = document.getElementById('manage-products-table');
+        manageBody.innerHTML = '';
+        products.forEach(p => {
+            manageBody.innerHTML += `
+                <tr>
+                    <td><code>${p.code}</code></td><td>${p.name}</td><td>${p.price} ₽</td><td><strong>${p.qty}</strong> шт.</td>
+                    <td class="text-end">
+                        <button class="btn btn-outline-info btn-sm me-1" onclick="editProduct('${p.id}')"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteProduct('${p.id}')"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>`;
+        });
+    }
+
+    function renderSalesLog() {
+        const tbody = document.getElementById('sales-log-body');
+        tbody.innerHTML = salesLog.length === 0 ? `<tr><td colspan="4" class="text-center text-muted p-3">Продаж нет</td></tr>` : '';
+        salesLog.forEach(s => {
+            tbody.innerHTML += `<tr><td>${s.productName}</td><td>${s.qty} шт.</td><td class="text-success fw-bold">${s.total} ₽</td><td class="text-muted">${s.time}</td></tr>`;
+        });
+        const totalMoney = salesLog.reduce((acc, s) => acc + Number(s.total || 0), 0);
+        const totalQty = salesLog.reduce((acc, s) => acc + Number(s.qty || 0), 0);
+        document.getElementById('sales-log-total-money').innerText = `${totalMoney.toLocaleString('ru-RU')} ₽`;
+        document.getElementById('sales-log-total-qty').innerText = `${totalQty} шт.`;
+        document.getElementById('sales-log-total-lines').innerText = String(salesLog.length);
+    }
+
+    window.editProduct = (id) => {
+        const prod = products.find(p => p.id === id);
+        if (!prod) return;
+        document.getElementById('edit-product-id').value = prod.id;
+        document.getElementById('edit-code').value = prod.code;
+        document.getElementById('edit-name').value = prod.name;
+        document.getElementById('edit-price').value = prod.price;
+        document.getElementById('edit-qty').value = prod.qty;
+        document.getElementById('form-card-title').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Редактировать товар`;
+        document.getElementById('save-product-btn').innerText = 'Обновить';
+        document.getElementById('cancel-edit-btn').classList.remove('d-none');
+    };
+
+    function resetEditForm() {
+        document.getElementById('product-edit-form').reset();
+        document.getElementById('edit-product-id').value = '';
+        document.getElementById('form-card-title').innerHTML = `<i class="bi bi-plus-circle me-2"></i>Добавить товар`;
+        document.getElementById('save-product-btn').innerText = 'Сохранить';
+        document.getElementById('cancel-edit-btn').classList.add('d-none');
+    }
+
+    document.getElementById('cancel-edit-btn').addEventListener('click', resetEditForm);
+
+    document.getElementById('openShiftModal').addEventListener('show.bs.modal', () => {
+        document.getElementById('shift-start-time').value = new Date().toTimeString().substring(0, 5);
+    });
+
+    // Установка сегодня по умолчанию в модуле "Считаться"
+    document.getElementById('calc-shift-date').valueAsDate = new Date();
+
+    // МОДУЛЬ "СЧИТАТЬСЯ" (ПОДСЧЕТ СМЕНЫ)
+    document.getElementById('run-calc-btn').addEventListener('click', calculateShiftReport);
+
+    function calculateShiftReport() {
+        const club = document.getElementById('calc-club-name').value.trim() || 'CyberClub';
+        const dateRaw = document.getElementById('calc-shift-date').value;
+        const dateFormatted = dateRaw ? new Date(dateRaw).toLocaleDateString('ru-RU') : new Date().toLocaleDateString('ru-RU');
+        const admin = document.getElementById('calc-admin-name').value.trim() || 'Не указан';
+
+        const cash = parseFloat(document.getElementById('calc-cash').value) || 0;
+        const terminal = parseFloat(document.getElementById('calc-terminal').value) || 0;
+        const transfers = parseFloat(document.getElementById('calc-transfers').value) || 0;
+        const salary = parseFloat(document.getElementById('calc-salary').value) || 0;
+
+        const totalSystemSales = salesLog.reduce((acc, s) => acc + s.total, 0);
+        const totalActualReceived = cash + terminal + transfers;
+
+        // Расчет итогового результата
+        const diff = totalActualReceived - totalSystemSales;
+        let resultText = '';
+        if (diff === 0) {
+            resultText = 'Смена сошлась в 0 ₽ (Идеально)';
+        } else if (diff > 0) {
+            resultText = `Смена отработана в ПЛЮС (+${diff.toLocaleString()} ₽)`;
+        } else {
+            resultText = `Смена отработана в МИНУС (${diff.toLocaleString()} ₽)`;
+        }
+
+        const report = 
+`Клуб: ${club}
+Дата: ${dateFormatted}
+Админ: ${admin}
+Отчёт: ${totalSystemSales.toLocaleString()} ₽
+Наличка: ${cash.toLocaleString()} ₽
+Терминал: ${terminal.toLocaleString()} ₽
+Переводы: ${transfers.toLocaleString()} ₽
+Итог: ${resultText}
+Зарплата: ${salary.toLocaleString()} ₽`;
+
+        document.getElementById('calc-report-output').value = report;
+    }
+
+    document.getElementById('copy-report-btn').addEventListener('click', () => {
+        const text = document.getElementById('calc-report-output').value;
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        alert('Отчёт скопирован в буфер обмена!');
+    });
+
+
+    // ==========================================
+    // УМНЫЙ HELPER AI С ЮМОРОМ И ПОИСКОМ В СЕТИ
+    // ==========================================
+    const aiToggleBtn = document.getElementById('ai-widget-toggle');
+    const aiPanel = document.getElementById('ai-panel');
+    const aiCloseBtn = document.getElementById('ai-close-btn');
+    const aiToggleIcon = document.getElementById('ai-toggle-icon');
+    const aiForm = document.getElementById('ai-form');
+    const aiInput = document.getElementById('ai-input');
+    const aiMessages = document.getElementById('ai-messages');
+
+    function toggleAiPanel() {
+        const isOpen = aiPanel.classList.toggle('open');
+        if (isOpen) {
+            aiToggleIcon.className = 'bi bi-x-lg';
+            aiInput.focus();
+        } else {
+            aiToggleIcon.className = 'bi bi-robot';
+        }
+    }
+
+    aiToggleBtn.addEventListener('click', toggleAiPanel);
+    aiCloseBtn.addEventListener('click', toggleAiPanel);
+
+    window.sendQuickAi = (text) => {
+        aiInput.value = text;
+        aiForm.dispatchEvent(new Event('submit'));
+    };
+
+    function appendAiMsg(text, type = 'bot') {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `ai-msg ai-msg-${type}`;
+        msgDiv.innerHTML = text;
+        aiMessages.appendChild(msgDiv);
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+    }
+
+    const DEFAULT_CITY = 'Елабуга';
+    const CITY_COORDS = {
+        'елабуга': { name: 'Елабуга', latitude: 55.7887, longitude: 52.0644 },
+        'казань': { name: 'Казань', latitude: 55.7963, longitude: 49.1089 },
+        'москва': { name: 'Москва', latitude: 55.7558, longitude: 37.6173 },
+        'набережные челны': { name: 'Набережные Челны', latitude: 55.7436, longitude: 52.3958 }
+    };
+    const CITY_ALIASES = {
+        'елабуге': 'елабуга', 'елабугу': 'елабуга', 'елабуги': 'елабуга', 'елабугой': 'елабуга',
+        'yelabuga': 'елабуга', 'elabuga': 'елабуга',
+        'москве': 'москва', 'москву': 'москва', 'москвы': 'москва',
+        'казани': 'казань', 'казань': 'казань',
+        'челнах': 'набережные челны', 'челны': 'набережные челны', 'набережных челнах': 'набережные челны'
+    };
+
+    function toNominativeCity(raw) {
+        let s = String(raw || '').trim().replace(/^г\.?\s*/i, '');
+        s = s.replace(/[.,!?]+$/g, '').trim();
+        const key = s.toLowerCase().replace(/ё/g, 'е');
+        const canon = CITY_ALIASES[key] || (CITY_COORDS[key] ? key : null);
+        if (canon && CITY_COORDS[canon]) return CITY_COORDS[canon].name;
+        if (/[ае]$/i.test(s) && s.length > 3) {
+            const asA = s.slice(0, -1) + 'а';
+            const asAKey = asA.toLowerCase().replace(/ё/g, 'е');
+            const asCanon = CITY_ALIASES[asAKey] || asAKey;
+            if (CITY_COORDS[asCanon]) return CITY_COORDS[asCanon].name;
+            return asA;
+        }
+        return s;
+    }
+
+    function extractCityFromText(text) {
+        const m = text.match(/(?:погод[аеуы]|температур[аеуы])\s+в\s+(.+)$/i)
+            || text.match(/\bв\s+([А-Яа-яЁёA-Za-z][А-Яа-яЁёA-Za-z\-\s]{1,40})$/i);
+        if (m) return toNominativeCity(m[1]);
+        return DEFAULT_CITY;
+    }
+
+    function weatherCodeText(code) {
+        const map = {
+            0: ['☀️', 'ясно'],
+            1: ['🌤️', 'почти ясно'],
+            2: ['⛅', 'переменная облачность'],
+            3: ['☁️', 'пасмурно'],
+            45: ['🌫️', 'туман'],
+            48: ['🌫️', 'изморозь'],
+            51: ['🌦️', 'лёгкая морось'],
+            53: ['🌦️', 'морось'],
+            55: ['🌧️', 'сильная морось'],
+            61: ['🌧️', 'небольшой дождь'],
+            63: ['🌧️', 'дождь'],
+            65: ['🌧️', 'сильный дождь'],
+            71: ['🌨️', 'небольшой снег'],
+            73: ['🌨️', 'снег'],
+            75: ['❄️', 'сильный снег'],
+            80: ['🌦️', 'ливни'],
+            81: ['🌧️', 'сильные ливни'],
+            82: ['⛈️', 'очень сильные ливни'],
+            85: ['🌨️', 'снегопад'],
+            95: ['⛈️', 'гроза'],
+            96: ['⛈️', 'гроза с градом'],
+            99: ['⛈️', 'сильная гроза с градом']
+        };
+        return map[code] || ['🌡️', 'без осадков'];
+    }
+
+    async function geocodeCity(city) {
+        const key = city.toLowerCase().replace(/ё/g, 'е');
+        if (CITY_COORDS[key]) return CITY_COORDS[key];
+
+        const variants = [city];
+        const nominative = toNominativeCity(city);
+        if (nominative && nominative !== city) variants.push(nominative);
+
+        for (const name of variants) {
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(name)}&count=5&language=ru&format=json`);
+            if (!geoRes.ok) continue;
+            const geoData = await geoRes.json();
+            const hit = (geoData.results || []).find(r => r.country_code === 'RU') || (geoData.results || [])[0];
+            if (hit) {
+                return { name: hit.name, latitude: hit.latitude, longitude: hit.longitude };
+            }
+        }
+        return CITY_COORDS[toNominativeCity(city).toLowerCase().replace(/ё/g, 'е')] || null;
+    }
+
+    async function fetchWeather(city = DEFAULT_CITY) {
+        const queryCity = toNominativeCity(city) || DEFAULT_CITY;
+        try {
+            const place = await geocodeCity(queryCity);
+            if (!place) {
+                return `Не нашёл город «${city}». Попробуй ещё раз, например: <em>погода в Елабуге</em> 🤔`;
+            }
+
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&wind_speed_unit=ms&timezone=Europe%2FMoscow`;
+            const weatherRes = await fetch(url);
+            const weatherData = await weatherRes.json();
+            const cur = weatherData.current;
+
+            if (cur) {
+                const temp = Math.round(cur.temperature_2m);
+                const feels = Math.round(cur.apparent_temperature);
+                const wind = Math.round(cur.wind_speed_10m);
+                const humidity = cur.relative_humidity_2m;
+                const [icon, sky] = weatherCodeText(cur.weather_code);
+                const comment = temp < 0
+                    ? 'Дубак! Надевай шапку ❄️'
+                    : temp < 10
+                        ? 'Прохладно, согревайся горячим чаем ☕'
+                        : temp < 22
+                            ? 'Нормально для смены, без сюрпризов 🙂'
+                            : 'Теплынь! Можно и без куртки ☀️';
+                return `${icon} <strong>Погода в г. ${place.name}</strong>: ${temp}°C, ${sky}.<br>Ощущается как ${feels}°C, ветер ${wind} м/с, влажность ${humidity}%.<br><em>${comment}</em>`;
+            }
+        } catch (e) {
+            const fallback = CITY_COORDS[queryCity.toLowerCase().replace(/ё/g, 'е')] || CITY_COORDS['елабуга'];
+            try {
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${fallback.latitude}&longitude=${fallback.longitude}&current=temperature_2m,weather_code,wind_speed_10m&wind_speed_unit=ms&timezone=Europe%2FMoscow`);
+                const weatherData = await weatherRes.json();
+                const cur = weatherData.current;
+                if (cur) {
+                    const temp = Math.round(cur.temperature_2m);
+                    const [icon, sky] = weatherCodeText(cur.weather_code);
+                    return `${icon} <strong>Погода в г. ${fallback.name}</strong>: ${temp}°C, ${sky}, ветер ${Math.round(cur.wind_speed_10m)} м/с.`;
+                }
+            } catch (_) { /* ignore */ }
+            return `Упс! Кажется, интернет-кабель кто-то перекусил. Не удалось узнать погоду. 🌐`;
+        }
+        return `Не удалось загрузить данные о погоде.`;
+    }
+
+    // ШУТКИ
+    const jokes = [
+        "Почему программисты любят тёмную тему? Потому что свет привлекает баги! 🐛",
+        "Администратор смены делится на два типа: тот, у кого касса сходится, и тот, у кого еще есть фантазия! 😂",
+        "Клиент: «У вас интернет лагает!»<br>Админ: «Это не интернет лагает, это вы слишком быстро думаете!» ⚡",
+        "Заходит как-то админ в кассу, а там... идеальный плюс без недостач. Тут он и проснулся. 😴"
+    ];
+
+    let lastAiTopic = '';
+    let aiPendingAdd = null;
+
+    function pick(list) {
+        return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function isMostlyThanks(lower) {
+        const compact = lower.replace(/[^а-яёa-z]+/gi, '');
+        if (/^(спасибо+|благодарю|спс|thanks|thx|мерси)$/i.test(compact)) return true;
+        const hasThanks = /спасибо|благодар|спс\b|thanks|thank you|мерси/.test(lower);
+        const hasTask = /погод|температур|добав|создай|удал|смен|пошут|анекдот|посчита|считаться/.test(lower);
+        return hasThanks && !hasTask;
+    }
+
+    function thanksReply() {
+        const byTopic = {
+            weather: [
+                'Всегда пожалуйста 🌤️ Рад, что погода пригодилась. Если ещё что-то нужно — я рядом.',
+                'Не за что! Пусть в Елабуге будет хороший денёк. Обращайся 💛'
+            ],
+            product: [
+                'Пожалуйста! Каталог в порядке, я на связи, если ещё что добавить 🙂',
+                'Всегда рад помочь с товарами. Спасибо, что написал 🙌'
+            ],
+            shift: [
+                'Пожалуйста! Хорошей смены и чтобы касса сошлась без нервов ✨',
+                'Не за что. Я тут, если по итогам смены ещё что уточнить 😊'
+            ]
+        };
+        const generic = [
+            'Пожалуйста! Мне приятно, что смог помочь 💛',
+            'Всегда пожалуйста. Обращайся — я на смене вместе с тобой 🙂',
+            'Не за что! Если ещё что-то нужно — просто напиши, без стеснения.',
+            'И тебе спасибо, что вежливый 😊 Чем ещё могу быть полезен?',
+            'Рад стараться! Хорошей смены ✨'
+        ];
+        const pool = byTopic[lastAiTopic] || generic;
+        return pick(pool);
+    }
+
+    function parseAddDetails(text) {
+        let cleanText = text
+            .replace(/добавь|добавить|создай|новый|товар/gi, '')
+            .replace(/[,;]/g, ' ')
+            .trim();
+
+        const priceMatch = cleanText.match(/цена\s+(\d+(?:\.\d+)?)/i) || cleanText.match(/(\d+)\s*(?:руб|₽)/i);
+        const qtyMatch = cleanText.match(/(?:кол|количество|шт|штук)\s+(\d+)/i) || cleanText.match(/(\d+)\s*(?:шт|штук)/i);
+        const codeMatch = cleanText.match(/артикул\s+(\d+)/i);
+
+        let namePart = cleanText
+            .replace(/цена\s+\d+(?:\.\d+)?/gi, '')
+            .replace(/\d+\s*(?:руб|₽)/gi, '')
+            .replace(/(?:кол|количество|шт|штук)\s+\d+/gi, '')
+            .replace(/\d+\s*(?:шт|штук)/gi, '')
+            .replace(/артикул\s+\d+/gi, '')
+            .trim();
+
+        return {
+            name: namePart || '',
+            price: priceMatch ? parseFloat(priceMatch[1]) : null,
+            qty: qtyMatch ? parseInt(qtyMatch[1], 10) : null,
+            code: codeMatch ? codeMatch[1] : null
+        };
+    }
+
+    async function saveProductFromAi(data) {
+        const name = (data.name || '').trim();
+        const qty = Number(data.qty);
+        const price = data.price == null ? 0 : Number(data.price);
+        const code = data.code || String(Math.floor(1000 + Math.random() * 9000));
+        await addDoc(collection(db, "products"), { name, price, qty, code });
+        lastAiTopic = 'product';
+        appendAiMsg(`✨ Товар <strong>${name}</strong> добавлен в каталог.<br>• Цена: ${price} ₽<br>• Кол-во: ${qty} шт.<br>• Артикул: ${code}<br>Если что поправить — скажи или зайди во вкладку «Редактировать каталог».`);
+    }
+
+    function startAddProductWizard() {
+        aiPendingAdd = { step: 'name', name: '', qty: null, price: null };
+        appendAiMsg('📦 Хорошо, добавляем в каталог.<br>Напиши, <strong>пожалуйста, название</strong> (например: <em>Торнадо 0.5</em>).<br>Если передумал — напиши «отмена».');
+        aiInput.focus();
+    }
+
+    async function continueAddProductWizard(queryText, lower) {
+        if (['отмена', 'отменить', 'стоп', 'не надо', 'cancel'].includes(lower)) {
+            aiPendingAdd = null;
+            appendAiMsg('👌 Добавление отменено. Ничего не записал.');
+            return true;
+        }
+
+        if (aiPendingAdd.step === 'name') {
+            const name = queryText.replace(/^товар[:\s]*/i, '').trim();
+            if (name.length < 2) {
+                appendAiMsg('Название слишком короткое. Напиши, <strong>что именно добавить</strong>.');
+                return true;
+            }
+            aiPendingAdd.name = name;
+            aiPendingAdd.step = 'qty';
+            appendAiMsg(`Принял: <strong>${name}</strong>.<br>Сколько штук положить на остаток? Напиши число, например <em>30</em>.`);
+            return true;
+        }
+
+        if (aiPendingAdd.step === 'qty') {
+            const qty = parseInt(queryText.replace(/\D/g, ''), 10);
+            if (!qty || qty < 1) {
+                appendAiMsg('Нужно целое число больше нуля. Сколько штук добавить?');
+                return true;
+            }
+            aiPendingAdd.qty = qty;
+            aiPendingAdd.step = 'price';
+            appendAiMsg(`Количество: <strong>${qty} шт.</strong><br>Какая цена в рублях? Напиши число, например <em>140</em>.`);
+            return true;
+        }
+
+        if (aiPendingAdd.step === 'price') {
+            const price = parseFloat(queryText.replace(',', '.').replace(/[^\d.]/g, ''));
+            if (Number.isNaN(price) || price < 0) {
+                appendAiMsg('Не понял цену. Напиши число, например <em>140</em>.');
+                return true;
+            }
+            const payload = { ...aiPendingAdd, price };
+            aiPendingAdd = null;
+            await saveProductFromAi(payload);
+            return true;
+        }
+        return false;
+    }
+
+    // ОБРАБОТЧИК ВВОДА HELPER AI
+    aiForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const queryText = aiInput.value.trim();
+        if (!queryText) return;
+
+        appendAiMsg(queryText, 'user');
+        aiInput.value = '';
+
+        const lower = queryText.toLowerCase();
+
+        if (aiPendingAdd) {
+            await continueAddProductWizard(queryText, lower);
+            return;
+        }
+
+        if (isMostlyThanks(lower)) {
+            appendAiMsg(thanksReply());
+            return;
+        }
+
+        if (/^(ок|окей|хорошо|понял|ладно|супер|круто|молодец|умница)[!?.]*$/i.test(lower.trim())) {
+            appendAiMsg(pick([
+                'Отлично 👍 Я рядом, если понадоблюсь.',
+                'Хорошо! Продолжаем смену спокойно 🙂',
+                'Принял. Если что — зови.'
+            ]));
+            return;
+        }
+
+        // 1. ПОГОДА (ЗАПРОС В СЕТЬ)
+        if (lower.includes('погод') || lower.includes('температур')) {
+            const city = extractCityFromText(queryText);
+            appendAiMsg(pick([
+                `Секунду, гляну, какая сейчас погода в г. ${city}…`,
+                `Сейчас узнаю погоду в г. ${city} — один момент 🙂`
+            ]));
+            const weatherResult = await fetchWeather(city);
+            lastAiTopic = 'weather';
+            appendAiMsg(weatherResult);
+            return;
+        }
+
+        // 2. ЮМОР И ШУТКИ
+        if (lower.includes('пошути') || lower.includes('анекдот') || lower.includes('шутк') || lower.includes('смеш')) {
+            const randomJoke = jokes[Math.floor(Math.random() * jokes.length)];
+            appendAiMsg(`Вот, держи — без официоза 😄<br>${randomJoke}`);
+            return;
+        }
+
+        // 3. ПОДСЧЕТ СМЕНЫ / СЧИТАТЬСЯ
+        if (lower.includes('посчитай смену') || lower.includes('считаться') || lower.includes('итог смены')) {
+            const tabCalcBtn = document.getElementById('tab-calc-btn');
+            tabCalcBtn.click();
+            calculateShiftReport();
+            lastAiTopic = 'shift';
+            appendAiMsg(`Готово: открыл вкладку <strong>«Считаться»</strong> и собрал черновик отчёта. Глянь наличку и терминал — если что-то не так, поправим вместе 🙂`);
+            return;
+        }
+
+        // 4. ОТКРЫТИЕ СМЕНЫ
+        if (lower.includes('открой смену') || lower.includes('открыть смену')) {
+            if (currentShift) {
+                appendAiMsg('Смена уже открыта для <strong>' + currentShift.userName + '</strong> — работаем. Если нужно что-то ещё, скажи 🙂');
+                return;
+            }
+            let nameMatch = queryText.match(/для\s+([А-Яа-яA-Za-z]+)/i) || queryText.match(/имя\s+([А-Яа-яA-Za-z]+)/i);
+            let name = nameMatch ? nameMatch[1] : 'Администратор';
+            let now = new Date();
+            let startStr = now.toTimeString().substring(0, 5);
+
+            await addDoc(collection(db, "shifts"), {
+                userName: name,
+                startTime: startStr,
+                endTime: "21:00",
+                isOpen: true,
+                createdAt: Date.now()
+            });
+
+            lastAiTopic = 'shift';
+            appendAiMsg(`Смена для <strong>${name}</strong> открыта. Удачной работы — я рядом, если понадоблюсь 🚀`);
+            return;
+        }
+
+        // 5. ЗАКРЫТИЕ СМЕНЫ
+        if (lower.includes('закрой смену') || lower.includes('закрыть смену')) {
+            if (!currentShift) {
+                appendAiMsg('Закрывать пока нечего — смена и так закрыта. Могу помочь открыть, если пора выходить на работу 🙂');
+                return;
+            }
+            const userName = currentShift.userName;
+            await updateDoc(doc(db, "shifts", currentShift.id), { isOpen: false });
+            lastAiTopic = 'shift';
+            appendAiMsg(`Отличная работа, <strong>${userName}</strong>. Смена закрыта — можно выдохнуть. Спасибо за смену 🎉`);
+            return;
+        }
+
+        // 6. ДОБАВЛЕНИЕ ТОВАРА — сначала уточняет, что и сколько
+        if (lower.includes('добавь') || lower.includes('добавить') || lower.includes('создай') || lower.includes('новый товар')) {
+            const details = parseAddDetails(queryText);
+            const onlyCommand = /^(добавь|добавить|создай)(\s+(новый\s+)?товар)?!?$/i.test(queryText.trim());
+            if (onlyCommand || !details.name) {
+                startAddProductWizard();
+                return;
+            }
+            if (!details.qty) {
+                aiPendingAdd = { step: 'qty', name: details.name, qty: null, price: details.price, code: details.code };
+                appendAiMsg(`Товар: <strong>${details.name}</strong>. Сколько штук добавить? Напиши число.`);
+                return;
+            }
+            if (details.price == null) {
+                aiPendingAdd = { step: 'price', name: details.name, qty: details.qty, price: null, code: details.code };
+                appendAiMsg(`<strong>${details.name}</strong>, ${details.qty} шт. Какая цена в рублях?`);
+                return;
+            }
+            await saveProductFromAi(details);
+            lastAiTopic = 'product';
+            return;
+        }
+
+        // 7. УДАЛЕНИЕ ТОВАРА
+        if (lower.includes('удали') || lower.includes('стереть') || lower.includes('убрать')) {
+            let targetProduct = products.find(p => lower.includes(p.name.toLowerCase()) || lower.includes(p.code.toLowerCase()));
+            if (targetProduct) {
+                await deleteDoc(doc(db, "products", targetProduct.id));
+                lastAiTopic = 'product';
+                appendAiMsg(`Готово: <strong>${targetProduct.name}</strong> убрал из каталога. Если это было зря — скажи, добавим обратно.`);
+            } else {
+                appendAiMsg('Не нашёл такой товар. Напиши точное название или артикул — поищу ещё раз.');
+            }
+            return;
+        }
+
+        // 8. ПРИВЕТСТВИЯ / ДРУЖЕСКИЙ РАЗГОВОР
+        if (lower.includes('привет') || lower.includes('здравств') || lower.includes('как дела') || lower.includes('кто ты')) {
+            const name = currentShift ? currentShift.userName : '';
+            appendAiMsg(pick([
+                `Привет${name ? ', ' + name : ''}! У меня всё спокойно, касса на месте. Как твоя смена — нормально идёт? 🙂`,
+                `Здравствуй! Я Helper AI, твой помощник на смене. Могу и погоду глянуть, и товар добавить. Чем помочь?`,
+                `Привет! Рад тебя видеть. Если нужно что-то по работе — спрашивай, без церемоний 💛`
+            ]));
+            return;
+        }
+
+        appendAiMsg(pick([
+            `Не совсем понял, но я рядом 🙂 Могу добавить товар, посчитать смену, сказать погоду в Елабуге или просто поддержать разговор.`,
+            `Хм, давай чуть проще: спроси про кассу, погоду или напиши «добавить товар» — я подхвачу.`,
+            `Я больше про смену и заботу, чем про сложные речи. Напиши, что нужно — разберёмся вместе 😊`
+        ]));
+    });
+</script>
 </body>
 </html>
